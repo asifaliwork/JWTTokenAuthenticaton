@@ -31,19 +31,21 @@ namespace JWTTokenAuthenticaton.Data
             {
 
             }
-            if (db.Roles.Any(x => x.Name == JWTTokenAuthenticaton.Utilities.Helper.SuperAdmin)) return;
-
-                roleManager.CreateAsync(new IdentityRole(JWTTokenAuthenticaton.Utilities.Helper.SuperAdmin)).GetAwaiter().GetResult();
+            if (db.Roles.Any(x => x.Name == JWTTokenAuthenticaton.Utilities.Helper.Admin)) return;
+            else
+            {
+                roleManager.CreateAsync(new IdentityRole(JWTTokenAuthenticaton.Utilities.Helper.Admin)).GetAwaiter().GetResult();
+            }
 
             userManager.CreateAsync(new ApplicationUser
             {
-                UserName = "superadmin@gmail.com",
-                Email = "superadmin@gmail.com",
+                UserName = "admin@gmail.com",
+                Email = "admin@gmail.com",
                 EmailConfirmed = true,
-                Name = "SuperAdmin"
+                Name = "Admin"
             }, "Asd123@").GetAwaiter().GetResult();
-            ApplicationUser user = db.Users.FirstOrDefault(x => x.Email == "superadmin@gmail.com");
-            userManager.AddToRoleAsync(user, JWTTokenAuthenticaton.Utilities.Helper.SuperAdmin).GetAwaiter().GetResult();
+            ApplicationUser user = db.Users.FirstOrDefault(x => x.Email == "admin@gmail.com");
+            userManager.AddToRoleAsync(user, JWTTokenAuthenticaton.Utilities.Helper.Admin).GetAwaiter().GetResult();
         }
     }
 }

@@ -22,7 +22,6 @@ namespace JWTTokenAuthenticaton.Controllers
          UserManager<ApplicationUser> _userManager;
          RoleManager<IdentityRole> _roleManager;
          private readonly IConfiguration _configuration;
-      
 
          public AccountController(ApplicationDbContext db,
          SignInManager<ApplicationUser> signInManager,
@@ -41,20 +40,12 @@ namespace JWTTokenAuthenticaton.Controllers
         [HttpGet("Index")]
          public IActionResult Index( )
          {
-
-
-            var authorization = this.HttpContext.Request.Headers["Authorization"].FirstOrDefault();
-            if (authorization == null)
-            {
-                return Ok("Not Authenticated Yet");
-            }
-
-            var aa = _db.Users.ToList();
-             return Ok(aa);
+            
+             return Ok("hghjghjghjghjghj ");
          }
        
         [HttpPost("login")]
-      
+        
         public async Task<IActionResult> login(LoginModel loginModel)    
         {
                 var responsemodel = new LoginResponse();
@@ -80,14 +71,12 @@ namespace JWTTokenAuthenticaton.Controllers
                     user.RefreshToken = responsemodel.RefreshToken;
                     user.RefreshTokenExpiry = DateTime.Now.AddHours(12);
                     await _userManager.UpdateAsync(user);
-
                 }              
                 if (result.IsLockedOut)
                 {
                     responsemodel.Status = "Error";
                     responsemodel.Message = "Your Account is locked out";
-                }
-                
+                }               
             }           
             ModelState.AddModelError("", "Invalid Login attempt");           
             return Ok(responsemodel);   
@@ -128,21 +117,22 @@ namespace JWTTokenAuthenticaton.Controllers
         {     
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Key"]));
          
-            var token = new JwtSecurityToken(
+            var token = new JwtSecurityToken
+                (
             
-                issuer: _configuration["JWT:ValidIssuer"],
+                 issuer: _configuration["JWT:ValidIssuer"],
                 
-                audience: _configuration["JWT:ValidAudience"],
+                 audience: _configuration["JWT:ValidAudience"],
                 
-                expires: DateTime.Now.AddSeconds(60),
+                 expires: DateTime.Now.AddSeconds(10),
                 
-                claims: authClaims,
-                
-                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)           
-                );      
+                 claims: authClaims,
+                 
+                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)           
+                ); 
+            
             return token;           
         }
-       
         private string GenerateRefreshToken()
         {
             var random = new byte[64];
@@ -154,66 +144,40 @@ namespace JWTTokenAuthenticaton.Controllers
             }
             return Convert.ToBase64String(random);
         }
-
+       
         [HttpPost("refreshToken")]
-        public async Task<LoginResponse> refreshToken(RefreshToken refreshToken)
+        public async Task<LoginResponse> refreshToken(string refreshToken)
         {
-            var principle = Getprincipal(refreshToken.JwtToken);
+            var _refreshToken = _userManager.Users.SingleOrDefault(m => m.RefreshToken == refreshToken);
             var response = new LoginResponse();
-            if (principle?.Identity?.Name is null)
+            var login = new LoginModel();
+            if (_refreshToken == null)
             {
-                return response;
+                NotFound("Refresh token not found");
             }
-            var identityUser = await _userManager.FindByNameAsync(principle.Identity.Name);
-
+            else
+            {
+                var userclaim = new[] { new Claim(ClaimTypes.Email, _refreshToken.Email) };
+                var identityUser = await _userManager.FindByEmailAsync(_refreshToken.Email);
+                if (identityUser is null || identityUser.RefreshToken != refreshToken ||identityUser.RefreshTokenExpiry > DateTime.UtcNow)
+                {
+                    response = response;
+                }
+            }
             var authClaims = new List<Claim>
-            {                   
-               new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-               new Claim("Name" , identityUser.Name.ToString()),
+            {
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("Email" , _refreshToken.Email.ToString()),
             };
-
-            if (identityUser is null || identityUser.RefreshToken != refreshToken.refreshToken ||
-                identityUser.RefreshTokenExpiry > DateTime.UtcNow)
-
-                return response;
-
             var token = GetToken(authClaims);
             response.Token = new JwtSecurityTokenHandler().WriteToken(token);
             response.RefreshToken = this.GenerateRefreshToken();
             response.Status = "Success";
             response.Message = "Login Success";
-            identityUser.RefreshToken = response.RefreshToken;
-            identityUser.RefreshTokenExpiry = DateTime.Now.AddHours(12);
-            await _userManager.UpdateAsync(identityUser);
-
-            return response;
-
-        }
-
-
-        private ClaimsPrincipal? Getprincipal(string token)
-        {
-            var Key = Encoding.UTF8.GetBytes(_configuration["JWT:Key"]);
-            var validation = new TokenValidationParameters
-            {
-                IssuerSigningKey = new SymmetricSecurityKey(Key),              
-                ValidateLifetime = true,
-                ValidateActor = false,
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateIssuerSigningKey = true,
-                ValidAudience = _configuration["JWT:ValidAudience"],
-                ValidIssuer = _configuration["JWT:ValidIssuer"],
-                ClockSkew = TimeSpan.Zero,
-            };
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var principal = tokenHandler.ValidateToken(token, validation, out SecurityToken securityToken);
-            JwtSecurityToken jwtSecurityToken = securityToken as JwtSecurityToken;
-            if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-            {
-                throw new SecurityTokenException("Invalid token");
-            }
-            return principal;
+           _refreshToken.RefreshToken = response.RefreshToken;
+           _refreshToken.RefreshTokenExpiry = DateTime.Now.AddHours(12);
+           await _userManager.UpdateAsync(_refreshToken);
+           return response;
         }
 
         [HttpPost("logout")]

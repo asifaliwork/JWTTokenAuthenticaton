@@ -2,7 +2,7 @@
 {
     public class Helper
     {
-        public static string SuperAdmin = "SuperAdmin";
+        public static string Admin = "Admin";
         
     }
     

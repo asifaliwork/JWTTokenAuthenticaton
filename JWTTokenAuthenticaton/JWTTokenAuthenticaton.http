@@ -1,6 +1,6 @@
-@JWTTokenAuthenticaton_HostAddress = http://localhost:5140
+ @JWTTokenAuthenticaton_HostAddress = http://localhost:5140
 
-GET {{JWTTokenAuthenticaton_HostAddress}}/weatherforecast/
-Accept: application/json
+# GET {{JWTTokenAuthenticaton_HostAddress}}/weatherforecast/
+# Accept: application/json
 
 ###
